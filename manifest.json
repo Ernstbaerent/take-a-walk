@@ -1,0 +1,17 @@
+{
+  "name": "Take a walk · Wellness-Tag-Challenge",
+  "short_name": "Take a walk",
+  "description": "Eure gemeinsame Spaziergang-Challenge: 40 Wochen in Folge zum Wellness-Tag.",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FDFBF8",
+  "theme_color": "#FDFBF8",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

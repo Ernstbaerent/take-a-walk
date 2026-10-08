@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FDFBF8">
+<meta name="apple-mobile-web-app-title" content="Take a walk">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Take a walk · Wellness-Tag-Challenge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --bg: #FDFBF8;
+    --bg-secondary: #F5F1EA;
+    --bg-tertiary: #EFEAE1;
+    --text: #2B2620;
+    --text-secondary: #8A8275;
+    --divider: #E8E2D6;
+    --accent: #FF7A59;
+    --accent-soft: #FFE3D6;
+    --calm: #4F9D8C;
+    --calm-soft: #DCEFEA;
+    --danger: #E2604A;
+    --ring-track: #EFEAE1;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    min-height:100vh;
+    overscroll-behavior-y:none;
+  }
+  .display{font-family:'Nunito', sans-serif; font-weight:800;}
+  #app-shell{max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; position:relative;}
+
+  /* ---------- Splash ---------- */
+  #splash{position:fixed; inset:0; background:var(--bg); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .45s ease;}
+  #splash.hide{opacity:0; pointer-events:none;}
+  .splash-icon{width:92px; height:92px; filter:drop-shadow(0 12px 26px rgba(255,90,60,.28)); animation:splashPop .6s cubic-bezier(.34,1.56,.64,1);}
+  .splash-icon svg{width:100%; height:100%; display:block;}
+  .splash-name{font-size:21px; color:var(--text); opacity:0; animation:splashFade .5s ease .2s forwards;}
+  @keyframes splashPop{0%{transform:scale(.55); opacity:0;} 65%{transform:scale(1.08); opacity:1;} 100%{transform:scale(1); opacity:1;}}
+  @keyframes splashFade{to{opacity:1;}}
+
+  /* ---------- Name Gate ---------- */
+  #name-gate{position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:60; padding:32px; overflow-y:auto;}
+  #name-gate.hidden{display:none;}
+  .gate-box{max-width:340px; width:100%; text-align:center;}
+  .gate-kicker{display:flex; align-items:center; justify-content:center; gap:7px; margin-bottom:20px;}
+  .gate-kicker .brand-icon{width:18px; height:18px;}
+  .gate-kicker span.kicker-text{font-size:12.5px; font-weight:700; letter-spacing:.04em; color:var(--text-secondary);}
+  .avatar-picker{width:88px; height:88px; border-radius:50%; background:var(--bg-secondary); border:1.5px dashed var(--divider); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; cursor:pointer; overflow:hidden; color:var(--text-secondary);}
+  .avatar-picker img{width:100%; height:100%; object-fit:cover; display:block;}
+  .avatar-hint{font-size:12px; color:var(--text-secondary); margin:0 0 18px;}
+  .gate-box .display{font-size:24px; line-height:1.25; margin:0 0 8px; color:var(--text);}
+  .gate-sub{color:var(--text-secondary); font-size:14px; margin:0 0 22px; line-height:1.55;}
+  .gate-box input[type=text]{
+    width:100%; padding:14px 16px; border-radius:12px; border:1px solid var(--divider);
+    background:var(--bg-secondary); color:var(--text); font-size:16px; font-family:inherit; margin-bottom:14px; text-align:center;
+  }
+  .gate-box input:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .btn-primary{
+    width:100%; padding:15px 16px; border-radius:14px; border:none;
+    background:var(--text); color:#fff; font-weight:700; font-size:16px;
+    cursor:pointer; font-family:inherit;
+  }
+  .btn-primary.accent{background:var(--accent);}
+  .btn-primary:active{transform:scale(.98);}
+
+  /* ---------- Header ---------- */
+  header{padding:20px 20px 0; display:flex; align-items:center; justify-content:space-between;}
+  .brand{display:flex; align-items:center; gap:8px;}
+  .brand-icon{width:26px; height:26px;}
+  .brand-icon svg{width:100%; height:100%; display:block;}
+  header .brand .display{font-size:19px; color:var(--text);}
+  .header-right{display:flex; align-items:center; gap:10px;}
+  #header-avatar{width:32px; height:32px;}
+  #gear-btn{
+    background:var(--bg-secondary); border:none; color:var(--text-secondary);
+    width:34px; height:34px; border-radius:50%; font-size:15px; cursor:pointer;
+  }
+
+  /* ---------- Segmented tabs ---------- */
+  #tabs{margin:16px 20px 0; background:var(--bg-secondary); border-radius:12px; padding:3px; display:flex; gap:3px;}
+  .tab-btn{
+    flex:1; background:none; border:none; color:var(--text-secondary); font-family:inherit;
+    font-size:14px; font-weight:600; padding:9px 0; border-radius:9px; cursor:pointer;
+  }
+  .tab-btn.active{background:#fff; color:var(--text); box-shadow:0 1px 3px rgba(43,38,32,.08);}
+
+  main{flex:1; padding:26px 20px 120px;}
+  #main.anim{animation:mainIn .32s ease;}
+  @keyframes mainIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ---------- Hero ring ---------- */
+  .hero{text-align:center; padding:4px 0 6px;}
+  .ring-wrap{position:relative; width:176px; height:176px; margin:0 auto 14px;}
+  .ring-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .ring-num{font-size:46px; line-height:1; color:var(--text);}
+  .ring-sub{font-size:12.5px; color:var(--text-secondary); margin-top:4px; font-weight:600;}
+  .hero-goal{font-size:14.5px; color:var(--text); font-weight:600; margin-top:2px;}
+  .hero-goal span{color:var(--accent);}
+  .hero-note{font-size:12.5px; color:var(--text-secondary); margin-top:4px;}
+
+  /* ---------- Consistency grid ---------- */
+  .grid-wrap{margin:26px 0 6px;}
+  .grid-title{font-size:13px; color:var(--text-secondary); margin-bottom:10px; display:flex; justify-content:space-between; font-weight:600;}
+  .grid{display:grid; grid-template-columns:repeat(10, 1fr); gap:6px;}
+  .grid-cell{width:100%; aspect-ratio:1; border-radius:5px; background:var(--bg-tertiary); border:1px solid var(--divider);}
+  .grid-cell.done{background:var(--accent); border-color:var(--accent);}
+  .grid-cell.done.won{background:var(--calm); border-color:var(--calm);}
+  .grid-cell.partial{background:var(--accent-soft); border-color:var(--accent-soft);}
+  .grid-cell.pending{border-color:var(--accent); border-style:dashed; background:none;}
+
+  /* ---------- Stat row ---------- */
+  .stat-row{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:24px 0;}
+  .stat{background:var(--bg-secondary); border-radius:14px; padding:14px 6px; text-align:center;}
+  .stat .display{font-size:20px; color:var(--text);}
+  .stat span{display:block; font-size:11px; color:var(--text-secondary); margin-top:3px; font-weight:600;}
+
+  /* ---------- Badges ---------- */
+  .badge-row{display:flex; gap:8px; margin:16px 0 4px; flex-wrap:wrap;}
+  .badge{display:flex; align-items:center; gap:6px; padding:7px 12px; border-radius:20px; background:var(--bg-secondary); font-size:12.5px; color:var(--text-secondary); font-weight:600;}
+  .badge.earned{background:var(--accent-soft); color:var(--accent);}
+  .badge.earned.final{background:var(--calm-soft); color:var(--calm);}
+
+  .section-title{font-size:13px; color:var(--text-secondary); margin:28px 0 6px; font-weight:600;}
+
+  /* ---------- Walk list ---------- */
+  .walk-item{display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--divider);}
+  .route-spark{width:50px; height:30px; flex:none; background:var(--bg-secondary); border-radius:8px;}
+  .walk-info{flex:1; min-width:0;}
+  .walk-date{font-size:14.5px; font-weight:600;}
+  .walk-meta{font-size:12.5px; color:var(--text-secondary); margin-top:2px;}
+  .walk-tag{font-size:11px; padding:3px 9px; border-radius:10px; background:var(--bg-secondary); color:var(--text-secondary); flex:none; font-weight:600;}
+  .walk-tag.ok{color:var(--calm); background:var(--calm-soft);}
+
+  /* ---------- Leaderboard ---------- */
+  .lb-item{display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--divider);}
+  .lb-avatar{width:36px; height:36px; flex:none;}
+  .lb-name{flex:1; font-size:15px; font-weight:600;}
+  .lb-streak{font-size:14px; color:var(--accent); font-weight:700;}
+  .lb-pts{font-size:11px; color:var(--text-secondary); margin-top:1px; text-align:right;}
+
+  .empty-note{color:var(--text-secondary); font-size:13.5px; line-height:1.6; padding:16px 0;}
+  .win-banner{background:var(--calm-soft); border-radius:16px; padding:18px; margin:8px 0 22px; text-align:center;}
+  .win-banner .display{font-size:18px; color:var(--calm); margin-bottom:4px;}
+  .win-banner p{font-size:13px; color:var(--text); margin:0; line-height:1.5;}
+
+  /* ---------- Start button ---------- */
+  #start-fab{position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; padding:14px 20px calc(18px + env(safe-area-inset-bottom)); background:linear-gradient(to top, var(--bg) 55%, transparent);}
+  #start-btn{width:100%; padding:17px; border-radius:16px; border:none; background:var(--text); color:#fff; font-weight:700; font-size:16px; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:9px; box-shadow:0 10px 24px rgba(43,38,32,.18);}
+  #start-btn:active{transform:scale(.98);}
+  .start-icon{width:16px; height:16px; display:inline-flex;}
+  .start-icon svg{width:100%; height:100%; display:block;}
+
+  /* ---------- Tracking overlay ---------- */
+  #tracking{position:fixed; inset:0; background:var(--bg); z-index:50; display:none; flex-direction:column;}
+  #tracking.active{display:flex;}
+  #track-map{flex:1; min-height:0;}
+  #track-hud{padding:22px 20px 6px; text-align:center;}
+  #track-timer{font-size:50px; color:var(--text);}
+  #track-sub{display:flex; justify-content:center; gap:26px; margin-top:8px; color:var(--text-secondary); font-size:13.5px; font-weight:600;}
+  #track-status{font-size:12.5px; color:var(--accent); min-height:16px; margin-top:8px; font-weight:600;}
+  #stop-btn{margin:14px 20px calc(20px + env(safe-area-inset-bottom)); padding:16px; border-radius:16px; border:none; background:var(--danger); color:#fff; font-weight:700; font-size:16px; font-family:inherit; cursor:pointer;}
+
+  /* ---------- Sheets ---------- */
+  .sheet-overlay{position:fixed; inset:0; background:rgba(43,38,32,.35); z-index:55; display:none; align-items:flex-end; justify-content:center;}
+  .sheet-overlay.active{display:flex;}
+  .sheet{background:#fff; width:100%; max-width:480px; border-radius:22px 22px 0 0; padding:10px 22px calc(24px + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto; box-shadow:0 -10px 40px rgba(43,38,32,.12);}
+  .sheet-handle{width:36px; height:4px; background:var(--divider); border-radius:2px; margin:0 auto 16px;}
+  .sheet .display{font-size:22px; color:var(--text); margin:0 0 4px;}
+  .sheet-sub{color:var(--text-secondary); font-size:13.5px; margin-bottom:18px; line-height:1.5;}
+  .sheet-stats{display:flex; gap:14px; margin-bottom:18px;}
+  .sheet-stats div{flex:1; background:var(--bg-secondary); border-radius:14px; padding:12px 6px; text-align:center;}
+  .sheet-stats .display{font-size:18px;}
+  .sheet-stats span{display:block; font-size:10.5px; color:var(--text-secondary); margin-top:2px; font-weight:600;}
+  #new-badge-note{background:var(--calm-soft); border-radius:12px; padding:12px 14px; font-size:13.5px; color:var(--calm); font-weight:600; margin-bottom:16px; display:none;}
+
+  /* ---------- Mood ---------- */
+  .mood-row{display:flex; gap:8px; margin-top:8px;}
+  .mood-btn{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 4px; border-radius:14px; border:1.5px solid var(--divider); background:var(--bg-secondary); cursor:pointer; font-family:inherit;}
+  .mood-btn .emoji{font-size:25px;}
+  .mood-btn .label{font-size:10.5px; color:var(--text-secondary); font-weight:600;}
+  .mood-btn:active{transform:scale(.96);}
+  .mood-compare{display:flex; align-items:center; justify-content:center; gap:16px; margin:2px 0 12px; padding:16px; background:var(--bg-secondary); border-radius:14px;}
+  .mood-compare .mood-emoji{font-size:32px; line-height:1;}
+  .mood-compare .mood-label{font-size:10.5px; color:var(--text-secondary); font-weight:600; margin-top:4px; text-align:center;}
+  .mood-compare .arrow{font-size:18px; color:var(--text-secondary);}
+
+  .group-label{font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.03em; font-weight:700; margin:22px 0 8px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:13px; color:var(--text-secondary); margin-bottom:6px; font-weight:600;}
+  .field select, .field input{width:100%; padding:12px 13px; border-radius:11px; border:1px solid var(--divider); background:var(--bg-secondary); color:var(--text); font-family:inherit; font-size:15px;}
+  .btn-secondary{width:100%; padding:12px; border-radius:12px; border:1px solid var(--divider); background:none; color:var(--text-secondary); font-family:inherit; font-size:14px; font-weight:600; margin-top:6px; cursor:pointer;}
+  .settings-hint{font-size:12px; color:var(--text-secondary); line-height:1.6; margin:4px 0 2px;}
+  .close-x{position:absolute; top:14px; right:16px; background:var(--bg-secondary); border:none; color:var(--text-secondary); width:30px; height:30px; border-radius:50%; font-size:15px; cursor:pointer;}
+  #db-banner{position:fixed; top:0; left:0; right:0; z-index:200; background:var(--danger); color:#fff; font-size:13px; font-weight:600; text-align:center; padding:10px 14px calc(10px); display:none;}
+  #db-banner.show{display:block;}
+
+  #header-avatar{cursor:pointer;}
+  .profile-head{display:flex; align-items:center; gap:14px; margin:6px 0 16px;}
+  .profile-avatar{width:64px; height:64px; flex:none;}
+  .profile-name{font-size:18px; font-weight:700; color:var(--text);}
+  #confetti{position:fixed; inset:0; z-index:151; pointer-events:none; display:none;}
+  #celebrate{position:fixed; inset:0; z-index:150; background:rgba(43,38,32,.55); display:none; align-items:center; justify-content:center; padding:26px;}
+  #celebrate.active{display:flex;}
+  .celebrate-card{background:#fff; border-radius:24px; padding:30px 24px 24px; text-align:center; max-width:360px; width:100%; animation:splashPop .6s cubic-bezier(.34,1.56,.64,1);}
+  .celebrate-emoji{font-size:56px; line-height:1;}
+  .celebrate-card .display{font-size:26px; color:var(--calm); margin:10px 0 8px;}
+  .celebrate-card p{font-size:15px; line-height:1.55; margin:0 0 16px; color:var(--text);}
+  .celebrate-card .voucher{background:var(--calm-soft); border-radius:14px; padding:14px; font-size:14px; font-weight:700; color:var(--text); margin-bottom:18px; line-height:1.45;}
+</style>
+</head>
+<body>
+<div id="db-banner"></div>
+
+<div id="splash">
+  <div class="splash-icon"><svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ig1" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FF9269"/><stop offset="1" stop-color="#FF5A3C"/></linearGradient></defs><rect width="180" height="180" rx="40" fill="url(#ig1)"/><circle cx="90" cy="90" r="52" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="13"/><circle cx="90" cy="90" r="52" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-dasharray="245 327" transform="rotate(-90 90 90)"/><circle cx="90" cy="38" r="9" fill="#fff"/></svg></div>
+  <div class="splash-name display">Take a walk</div>
+</div>
+
+<div id="app-shell">
+  <div id="name-gate">
+    <div class="gate-box">
+      <div class="gate-kicker">
+        <span class="brand-icon"><svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ig2" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FF9269"/><stop offset="1" stop-color="#FF5A3C"/></linearGradient></defs><rect width="180" height="180" rx="40" fill="url(#ig2)"/><circle cx="90" cy="90" r="52" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="13"/><circle cx="90" cy="90" r="52" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-dasharray="245 327" transform="rotate(-90 90 90)"/><circle cx="90" cy="38" r="9" fill="#fff"/></svg></span>
+        <span class="kicker-text">TAKE A WALK</span>
+      </div>
+      <div class="avatar-picker" id="avatar-picker">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="14" r="3.5"/></svg>
+      </div>
+      <input type="file" id="photo-input" accept="image/*" style="display:none;">
+      <p class="avatar-hint">Profilfoto (optional)</p>
+      <p class="display">Willkommen bei Take a walk</p>
+      <p class="gate-sub">40 Wochen in Folge, mindestens eine Stunde &mdash; gemeinsam unterwegs. Schafft ihr's alle, gibt's einen Wellness-Tag. Wie heißt du?</p>
+      <input id="name-input" type="text" placeholder="Dein Name" maxlength="24" autocomplete="given-name">
+      <button class="btn-primary accent" id="name-submit">Loslegen</button>
+    </div>
+  </div>
+
+  <header>
+    <div class="brand">
+      <span class="brand-icon"><svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ig3" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FF9269"/><stop offset="1" stop-color="#FF5A3C"/></linearGradient></defs><rect width="180" height="180" rx="40" fill="url(#ig3)"/><circle cx="90" cy="90" r="52" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="13"/><circle cx="90" cy="90" r="52" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-dasharray="245 327" transform="rotate(-90 90 90)"/><circle cx="90" cy="38" r="9" fill="#fff"/></svg></span>
+      <span class="display">Take a walk</span>
+    </div>
+    <div class="header-right">
+      <div id="header-avatar"></div>
+      <button id="gear-btn" aria-label="Einstellungen">⚙</button>
+    </div>
+  </header>
+  <div id="tabs">
+    <button class="tab-btn active" data-tab="me">Ich</button>
+    <button class="tab-btn" data-tab="group">Gruppe</button>
+  </div>
+
+  <main id="main"></main>
+
+  <div id="start-fab">
+    <button id="start-btn"><span class="start-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="#fff"/></svg></span>Spaziergang starten</button>
+  </div>
+</div>
+
+<div id="tracking">
+  <div id="track-map"></div>
+  <div id="track-hud">
+    <div id="track-timer" class="display">00:00</div>
+    <div id="track-sub">
+      <span id="track-dist">0,00 km</span>
+      <span id="track-pace">&nbsp;</span>
+    </div>
+    <div id="track-status">GPS wird gesucht …</div>
+  </div>
+  <button id="stop-btn">Spaziergang beenden</button>
+</div>
+
+<div class="sheet-overlay" id="mood-check">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <p class="display" id="mood-title" style="font-size:20px;">Wie fühlst du dich gerade?</p>
+    <p class="sheet-sub">Kurz einschätzen &mdash; danach siehst du den Unterschied.</p>
+    <div class="mood-row" id="mood-options"></div>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="summary">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <p class="display" id="summary-title">Geschafft!</p>
+    <p class="sheet-sub" id="summary-sub"></p>
+    <div class="sheet-stats">
+      <div><span class="display" id="s-dur">00:00</span><span>Dauer</span></div>
+      <div><span class="display" id="s-dist">0,00 km</span><span>Strecke</span></div>
+      <div><span class="display" id="s-pts">+0</span><span>Punkte</span></div>
+    </div>
+    <div class="mood-compare" id="mood-compare-box"></div>
+    <p class="sheet-sub" id="mood-note" style="text-align:center; margin-top:-8px;"></p>
+    <p class="sheet-sub" id="cumulative-km" style="text-align:center; font-weight:700; color:var(--text);"></p>
+    <div id="new-badge-note"></div>
+    <button class="btn-primary accent" id="save-walk-btn">Spaziergang speichern</button>
+    <button class="btn-secondary" id="discard-walk-btn">Verwerfen</button>
+  </div>
+</div>
+
+<div class="sheet-overlay" id="profile">
+  <div class="sheet" style="position:relative;">
+    <button class="close-x" id="profile-close">✕</button>
+    <div class="sheet-handle"></div>
+    <p class="display" style="font-size:20px;">Dein Profil</p>
+    <div class="profile-head">
+      <div class="profile-avatar" id="profile-avatar"></div>
+      <div>
+        <div class="profile-name" id="profile-name"></div>
+        <div class="settings-hint" id="profile-status"></div>
+      </div>
+    </div>
+    <input type="file" id="profile-photo-input" accept="image/*" style="display:none;">
+    <button class="btn-secondary" id="profile-photo-btn">Profilfoto hinzufügen / ändern</button>
+    <button class="btn-secondary" id="rename-btn">Namen ändern</button>
+    <p class="settings-hint" style="margin-top:14px;">Ein Spaziergang zählt für die Challenge ab 60 Minuten. Es zählt der Tag, an dem du ihn machst &ndash; egal welcher Wochentag.</p>
+  </div>
+</div>
+
+<canvas id="confetti"></canvas>
+<div id="celebrate">
+  <div class="celebrate-card">
+    <div class="celebrate-emoji">🎉</div>
+    <p class="display">Wellness-Tag gewonnen!</p>
+    <p>40 Wochen in Folge &ndash; jede von euch war jede Woche mindestens eine Stunde unterwegs. Das habt ihr euch richtig verdient!</p>
+    <div class="voucher">🎁 Meldet euch bei Clemens, um euren Wellness-Gutschein einzulösen.</div>
+    <button class="btn-primary accent" id="celebrate-close">Juhu!</button>
+  </div>
+</div>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+import { initializeFirestore, getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, where, documentId, getDocs } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCZgqwPVAwkZKOuJG5KGNw85jiH4Kcv928",
+  authDomain: "take-a-walk-app.firebaseapp.com",
+  projectId: "take-a-walk-app",
+  storageBucket: "take-a-walk-app.firebasestorage.app",
+  messagingSenderId: "739063890617",
+  appId: "1:739063890617:web:f2788a2bc6eb264cb25168"
+};
+const fbApp = initializeApp(firebaseConfig);
+let db;
+try{ db = initializeFirestore(fbApp, { experimentalAutoDetectLongPolling: true }); }
+catch(e){ db = getFirestore(fbApp); }
+
+(function(){
+  "use strict";
+
+  const $ = sel => document.querySelector(sel);
+  const MIN_SEC = 3600;      // ein Spaziergang zählt ab 60 Minuten
+  const GOAL_WEEKS = 40;
+
+  /* ---------- lokaler Speicher (nur dieses Handy) ---------- */
+  const MEM = {};
+  function localGet(key){
+    try{ const v = localStorage.getItem('takeawalk:' + key); return v ? JSON.parse(v) : null; }
+    catch(e){ return MEM[key] !== undefined ? MEM[key] : null; }
+  }
+  function localSet(key, value){
+    try{ localStorage.setItem('takeawalk:' + key, JSON.stringify(value)); }
+    catch(e){ MEM[key] = value; }
+  }
+
+  function showBanner(msg){
+    const b = $('#db-banner');
+    b.textContent = msg; b.classList.add('show');
+    clearTimeout(showBanner._t);
+    showBanner._t = setTimeout(()=> b.classList.remove('show'), 6000);
+  }
+  function withTimeout(p, ms){
+    return Promise.race([p, new Promise((_, rej)=> setTimeout(()=> rej(new Error('timeout')), ms))]);
+  }
+
+  /* ---------- Datenbank (Firebase, für alle sichtbar) ---------- */
+  async function sGet(key){
+    const snap = await withTimeout(getDoc(doc(db, 'kv', key)), 10000);
+    return snap.exists() ? JSON.parse(snap.data().value) : null;   // null = gibt es nicht
+  }
+  async function sSet(key, value){
+    try{
+      await withTimeout(setDoc(doc(db, 'kv', key), { value: JSON.stringify(value), updated: Date.now() }), 10000);
+      return true;
+    }catch(e){
+      console.error('Firebase-Schreibfehler', e);
+      showBanner(e && e.code === 'permission-denied'
+        ? 'Datenbank-Regeln blockieren das Speichern (Firestore → Regeln prüfen).'
+        : 'Speichern fehlgeschlagen – bitte Internetverbindung prüfen.');
+      return false;
+    }
+  }
+  async function sDel(key){
+    try{ await withTimeout(deleteDoc(doc(db, 'kv', key)), 10000); }catch(e){ console.error(e); }
+  }
+  async function sListEntries(prefix){
+    const q = query(collection(db, 'kv'), where(documentId(), '>=', prefix), where(documentId(), '<', prefix + '\uf8ff'));
+    const snap = await withTimeout(getDocs(q), 12000);
+    return snap.docs.map(d => ({ key: d.id, value: JSON.parse(d.data().value) }));
+  }
+
+  /* ---------- Hilfsfunktionen ---------- */
+  function slugify(name){
+    return name.trim().toLowerCase()
+      .replace(/[äÄ]/g,'ae').replace(/[öÖ]/g,'oe').replace(/[üÜ]/g,'ue').replace(/[ß]/g,'ss')
+      .replace(/\s+/g,'_').replace(/[^a-z0-9_-]/g,'') || 'freundin';
+  }
+  function esc(t){
+    return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function monIdx(dow){ return (dow + 6) % 7; }
+  function weekStart(d){
+    const date = new Date(d); date.setHours(0,0,0,0);
+    date.setDate(date.getDate() - monIdx(date.getDay()));
+    return date;
+  }
+  function localISO(d){
+    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), da = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${da}`;
+  }
+  function weekKey(d){ return localISO(weekStart(typeof d === 'string' ? new Date(d + 'T00:00:00') : d)); }
+  function fmtDate(iso){
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit'});
+  }
+  function fmtDur(sec){
+    const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+    return h>0 ? `${h} Std ${m} Min` : `${m} Min`;
+  }
+  function fmtClock(sec){
+    const m = Math.floor(sec/60).toString().padStart(2,'0');
+    const s = Math.floor(sec%60).toString().padStart(2,'0');
+    return `${m}:${s}`;
+  }
+  function fmtKm(n){ return n.toFixed(1).replace('.',','); }
+
+  const MILESTONES = [
+    {n:5, emoji:'🥾', label:'5 Wochen'},
+    {n:10, emoji:'🏅', label:'10 Wochen'},
+    {n:20, emoji:'🏆', label:'20 Wochen'},
+    {n:40, emoji:'🎁', label:'Wellness-Tag!'}
+  ];
+  const MOODS = [
+    {v:1, emoji:'😔', label:'Erschöpft'},
+    {v:2, emoji:'😐', label:'Okay'},
+    {v:3, emoji:'🙂', label:'Gut'},
+    {v:4, emoji:'😄', label:'Top'}
+  ];
+  const AVATAR_PALETTE = ['#FFE3D6','#DCEFEA','#F0E6D2','#E7DCEE','#FBE0E4'];
+  const CAMERA_SVG = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="14" r="3.5"/></svg>';
+
+  function avatarHTML(name, photo, size){
+    if(photo){
+      return `<img src="${esc(photo)}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex:none;display:block;">`;
+    }
+    const initial = (name && name.trim()[0] ? name.trim()[0] : '?').toUpperCase();
+    let hash = 0;
+    for(let i=0;i<(name||'').length;i++) hash = (hash*31 + name.charCodeAt(i)) >>> 0;
+    const bg = AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+    const fs = Math.round(size*0.42);
+    return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:${fs}px;font-weight:700;color:var(--text);flex:none;">${esc(initial)}</div>`;
+  }
+
+  function resizeImage(file, size){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const canvas = document.createElement('canvas');
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide)/2, sy = (img.height - minSide)/2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /* ---------- Wochen-Logik: zählt immer das Datum des Handys ---------- */
+  // Liste der letzten 40 Wochen (die aktuelle ist die letzte).
+  function buildTrail(statusFn){
+    const cur = weekStart(new Date());
+    const weeks = [];
+    for(let i=39;i>=0;i--){
+      const ws = new Date(cur); ws.setDate(ws.getDate() - 7*i);
+      const key = localISO(ws);
+      const q = statusFn(key);
+      const status = q === 'done' ? 'done' : q === 'partial' ? 'partial' : (i === 0 ? 'pending' : 'missed');
+      weeks.push({key, status, num: 40-i});
+    }
+    return weeks;
+  }
+  // Serie = aufeinanderfolgende erledigte Wochen. Die laufende Woche bricht die Serie nie.
+  function streakFromTrail(weeks){
+    let s = 0;
+    for(let i=weeks.length-1;i>=0;i--){
+      if(weeks[i].status === 'done') s++;
+      else if(i === weeks.length-1) continue;
+      else break;
+    }
+    return s;
+  }
+  function qualSet(walks){
+    const set = new Set();
+    (walks || []).forEach(w => { if(w.durationSec >= MIN_SEC) set.add(weekKey(w.date)); });
+    return set;
+  }
+
+  function ringSVG(fraction, won){
+    const size=176, stroke=14, r=(size-stroke)/2, c=2*Math.PI*r;
+    const off = c*(1-Math.min(fraction,1));
+    const color = won ? 'var(--calm)' : 'var(--accent)';
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--ring-track)" stroke-width="${stroke}"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"
+        stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${size/2} ${size/2})" style="transition:stroke-dashoffset .5s ease;"/>
+    </svg>`;
+  }
+
+  function routeSparkline(route){
+    if(!route || route.length < 2) return '';
+    const lats = route.map(p=>p[0]), lngs = route.map(p=>p[1]);
+    const minLat=Math.min(...lats), maxLat=Math.max(...lats);
+    const minLng=Math.min(...lngs), maxLng=Math.max(...lngs);
+    const w=50,h=30,pad=4;
+    const spanLat=(maxLat-minLat)||0.0002, spanLng=(maxLng-minLng)||0.0002;
+    const pts = route.map(p=>{
+      const x = pad + ((p[1]-minLng)/spanLng)*(w-2*pad);
+      const y = h-pad - ((p[0]-minLat)/spanLat)*(h-2*pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return `<svg viewBox="0 0 ${w} ${h}" class="route-spark"><polyline points="${pts}" fill="none" stroke="#FF7A59" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+
+  function haversine(a,b){
+    const R=6371000, toRad=x=>x*Math.PI/180;
+    const dLat=toRad(b.lat-a.lat), dLng=toRad(b.lng-a.lng);
+    const s = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
+    return 2*R*Math.asin(Math.sqrt(s));
+  }
+  function downsample(points, max){
+    if(points.length <= max) return points.map(p=>[p.lat,p.lng]);
+    const step = points.length/max, out=[];
+    for(let i=0;i<max;i++) out.push(points[Math.floor(i*step)]);
+    return out.map(p=>[p.lat,p.lng]);
+  }
+
+  /* ---------- Zustand ---------- */
+  let myName = null, mySlug = null, myProfile = {}, pendingPhoto = null;
+  let activeTab = 'me';
+  let myWalks = [];
+  let trackPoints = [], trackStart = null, watchId = null, timerInt = null, wakeLock = null;
+  let map, polyline, marker;
+  let pendingWalk = null, currentMoodStage = null, moodBefore = null, moodAfter = null;
+
+  function animateMain(){
+    const el = $('#main');
+    el.classList.remove('anim');
+    void el.offsetWidth;
+    el.classList.add('anim');
+  }
+  function updateHeaderAvatar(){
+    $('#header-avatar').innerHTML = avatarHTML(myName || '', myProfile.photo, 32);
+  }
+  function showGate(){
+    $('#name-gate').classList.remove('hidden');
+    const btn = $('#name-submit'); btn.disabled = false; btn.textContent = 'Loslegen';
+  }
+
+  /* ---------- Start: sofort anzeigen, Daten im Hintergrund auffrischen ---------- */
+  async function init(){
+    myName = localGet('my-name');
+    if(!myName) return;                       // Anmeldung bleibt sichtbar
+    mySlug = slugify(myName);
+    $('#name-gate').classList.add('hidden');
+    myProfile = localGet('cache:profile') || {};
+    myWalks = localGet('cache:walks') || [];
+    updateHeaderAvatar();
+    render();
+    refreshMine();
+    refreshGroup(false);
+  }
+
+  async function refreshMine(){
+    try{
+      const [p, w] = await Promise.all([sGet('member:' + mySlug), sGet('walks:' + mySlug)]);
+      if(p === null){
+        // Profil wurde in der Datenbank gelöscht → neu anmelden
+        ['my-name','cache:profile','cache:walks','cache:group','celebrated'].forEach(k => localSet(k, null));
+        myName = null; mySlug = null; myProfile = {}; myWalks = []; pendingPhoto = null;
+        $('#avatar-picker').innerHTML = CAMERA_SVG;
+        $('#name-input').value = '';
+        showGate();
+        return;
+      }
+      myProfile = p; myWalks = w || [];
+      localSet('cache:profile', myProfile); localSet('cache:walks', myWalks);
+      updateHeaderAvatar();
+      if(activeTab === 'me') renderMe();
+    }catch(e){
+      console.error(e);
+      showBanner('Keine Verbindung – zeige gespeicherte Daten.');
+    }
+  }
+
+  /* ---------- Anmeldung ---------- */
+  $('#avatar-picker').addEventListener('click', ()=> $('#photo-input').click());
+  $('#photo-input').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const dataUrl = await resizeImage(file, 220);
+      pendingPhoto = dataUrl;
+      $('#avatar-picker').innerHTML = `<img src="${dataUrl}">`;
+    }catch(err){ console.error('photo resize failed', err); }
+  });
+
+  $('#name-submit').addEventListener('click', async ()=>{
+    const val = $('#name-input').value.trim();
+    if(!val) return;
+    const btn = $('#name-submit'); btn.disabled = true; btn.textContent = 'Einen Moment …';
+    const slug = slugify(val);
+    let existingProfile, existingWalks;
+    try{
+      [existingProfile, existingWalks] = await Promise.all([sGet('member:' + slug), sGet('walks:' + slug)]);
+    }catch(e){
+      showBanner('Keine Verbindung zur Datenbank – bitte nochmal versuchen.');
+      btn.disabled = false; btn.textContent = 'Loslegen'; return;
+    }
+    const profile = {displayName: val, photo: pendingPhoto || (existingProfile && existingProfile.photo) || null};
+    const results = await Promise.all([
+      sSet('member:' + slug, profile),
+      existingWalks ? Promise.resolve(true) : sSet('walks:' + slug, [])
+    ]);
+    if(!results[0] || !results[1]){ btn.disabled = false; btn.textContent = 'Loslegen'; return; }
+    myName = val; mySlug = slug; myProfile = profile; myWalks = existingWalks || [];
+    localSet('my-name', val); localSet('cache:profile', profile); localSet('cache:walks', myWalks);
+    $('#name-gate').classList.add('hidden');
+    updateHeaderAvatar();
+    render();
+    refreshGroup(false);
+  });
+
+  /* ---------- Tabs ---------- */
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      activeTab = btn.dataset.tab;
+      render();
+    });
+  });
+
+  /* ---------- Profil (Foto & Name) – öffnet sofort ---------- */
+  function openProfile(){
+    $('#profile-avatar').innerHTML = avatarHTML(myName || '', myProfile.photo, 64);
+    $('#profile-name').textContent = myName || '';
+    $('#profile-status').textContent = '';
+    $('#profile').classList.add('active');
+  }
+  function closeProfile(){ $('#profile').classList.remove('active'); }
+  $('#gear-btn').addEventListener('click', openProfile);
+  $('#header-avatar').addEventListener('click', openProfile);
+  $('#profile-close').addEventListener('click', closeProfile);
+  $('#profile').addEventListener('click', e => { if(e.target.id === 'profile') closeProfile(); });
+
+  $('#profile-photo-btn').addEventListener('click', ()=> $('#profile-photo-input').click());
+  $('#profile-photo-input').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    e.target.value = '';
+    if(!file || !mySlug) return;
+    $('#profile-status').textContent = 'Foto wird gespeichert …';
+    try{
+      const dataUrl = await resizeImage(file, 220);
+      const profile = {displayName: myName, photo: dataUrl};
+      const ok = await sSet('member:' + mySlug, profile);
+      if(!ok){ $('#profile-status').textContent = 'Speichern hat nicht geklappt.'; return; }
+      myProfile = profile; localSet('cache:profile', profile);
+      updateHeaderAvatar();
+      $('#profile-avatar').innerHTML = avatarHTML(myName, dataUrl, 64);
+      $('#profile-status').textContent = 'Foto gespeichert ✓';
+      refreshGroup(false);
+    }catch(err){
+      console.error(err);
+      $('#profile-status').textContent = 'Das Foto konnte nicht gelesen werden.';
+    }
+  });
+
+  $('#rename-btn').addEventListener('click', async ()=>{
+    const val = prompt('Neuer Name:', myName);
+    if(!val || !val.trim()) return;
+    const name = val.trim(), slug = slugify(name);
+    $('#profile-status').textContent = 'Name wird geändert …';
+
+    if(slug === mySlug){            // nur Schreibweise geändert
+      const profile = {displayName: name, photo: myProfile.photo || null};
+      if(await sSet('member:' + mySlug, profile)){
+        myName = name; myProfile = profile;
+        localSet('my-name', name); localSet('cache:profile', profile);
+        updateHeaderAvatar(); $('#profile-name').textContent = name; $('#profile-status').textContent = 'Gespeichert ✓';
+        render();
+      } else $('#profile-status').textContent = '';
+      return;
+    }
+    let taken, fresh;
+    try{
+      taken = await sGet('member:' + slug);
+      fresh = (await sGet('walks:' + mySlug)) || [];
+    }catch(e){ showBanner('Keine Verbindung zur Datenbank.'); $('#profile-status').textContent = ''; return; }
+    if(taken){ alert('Diesen Namen gibt es in der Gruppe schon. Bitte wähl einen anderen.'); $('#profile-status').textContent = ''; return; }
+
+    const profile = {displayName: name, photo: myProfile.photo || null};
+    const r = await Promise.all([sSet('member:' + slug, profile), sSet('walks:' + slug, fresh)]);
+    if(!r[0] || !r[1]){ $('#profile-status').textContent = ''; return; }
+    await sDel('member:' + mySlug); await sDel('walks:' + mySlug);   // alten Eintrag entfernen
+    myName = name; mySlug = slug; myProfile = profile; myWalks = fresh;
+    localSet('my-name', name); localSet('cache:profile', profile); localSet('cache:walks', fresh);
+    updateHeaderAvatar();
+    $('#profile-name').textContent = name; $('#profile-avatar').innerHTML = avatarHTML(name, profile.photo, 64);
+    $('#profile-status').textContent = 'Gespeichert ✓';
+    render(); refreshGroup(false);
+  });
+
+  /* ---------- Anzeige: Ich ---------- */
+  function render(){
+    if(activeTab === 'me') renderMe();
+    else renderGroup();
+  }
+
+  function renderMe(){
+    const qs = qualSet(myWalks);
+    const trail = buildTrail(key => qs.has(key) ? 'done' : false);
+    const streak = streakFromTrail(trail);
+    const won = streak >= GOAL_WEEKS;
+    const thisWeekDone = trail[trail.length-1].status === 'done';
+    const qualifyingCount = myWalks.filter(w => w.durationSec >= MIN_SEC).length;
+    const totalDist = myWalks.reduce((a,w)=>a+w.distanceKm,0);
+    const earned = MILESTONES.filter(m=>streak>=m.n);
+    const points = qualifyingCount*10 + earned.length*25;
+    const remaining = Math.max(0, GOAL_WEEKS - streak);
+
+    const moodWalks = myWalks.filter(w => typeof w.moodBefore === 'number' && typeof w.moodAfter === 'number');
+    let boostText = '–';
+    if(moodWalks.length){
+      const avg = moodWalks.reduce((a,w)=>a+(w.moodAfter-w.moodBefore),0)/moodWalks.length;
+      boostText = (avg>0?'+':'') + avg.toFixed(1);
+    }
+
+    $('#main').innerHTML = `
+      <div class="hero">
+        <div class="ring-wrap">
+          ${ringSVG(streak/GOAL_WEEKS, won)}
+          <div class="ring-center">
+            <div class="ring-num display">${streak}</div>
+            <div class="ring-sub">von ${GOAL_WEEKS}</div>
+          </div>
+        </div>
+        <div class="hero-goal">${won ? '🎁 Wellness-Tag verdient!' : `Noch <span>${remaining}</span> ${remaining===1?'Woche':'Wochen'} bis zum Wellness-Tag`}</div>
+        <div class="hero-note">${thisWeekDone ? 'Diese Woche ist geschafft ✓' : 'Diese Woche noch offen – mindestens 60 Minuten'}</div>
+      </div>
+
+      <div class="grid-wrap">
+        <div class="grid-title"><span>Dein Verlauf</span><span>${streak}/${GOAL_WEEKS}</span></div>
+        <div class="grid">
+          ${trail.map(w=>`<div class="grid-cell ${w.status} ${won && w.status==='done' ? 'won':''}" title="Woche ${w.num}"></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="display">${qualifyingCount}</div><span>Spaziergänge</span></div>
+        <div class="stat"><div class="display">${fmtKm(totalDist)}</div><span>km gesamt</span></div>
+        <div class="stat"><div class="display">${points}</div><span>Punkte</span></div>
+        <div class="stat"><div class="display">${boostText}</div><span>Ø Stimmung</span></div>
+      </div>
+
+      <div class="section-title">Abzeichen</div>
+      <div class="badge-row">
+        ${MILESTONES.map(m=>`<div class="badge ${streak>=m.n?'earned':''} ${streak>=m.n && m.n===GOAL_WEEKS ? 'final':''}">${m.emoji} ${m.label}</div>`).join('')}
+      </div>
+
+      <div class="section-title">Letzte Spaziergänge</div>
+      ${myWalks.length===0 ? `<div class="empty-note">Noch keine Spaziergänge gespeichert. Starte unten deinen ersten &mdash; er zählt sofort mit.</div>` :
+        myWalks.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).map(w=>`
+          <div class="walk-item">
+            ${routeSparkline(w.route) || '<div class="route-spark"></div>'}
+            <div class="walk-info">
+              <div class="walk-date">${fmtDate(w.date)}</div>
+              <div class="walk-meta">${fmtDur(w.durationSec)} · ${w.distanceKm.toFixed(2)} km${typeof w.moodAfter==='number' ? ' · '+MOODS.find(m=>m.v===w.moodAfter).emoji : ''}</div>
+            </div>
+            <div class="walk-tag ${w.durationSec>=MIN_SEC ? 'ok':''}">${w.durationSec>=MIN_SEC ? 'zählt' : 'unter 60 Min'}</div>
+          </div>`).join('')}
+    `;
+    animateMain();
+  }
+
+  /* ---------- Anzeige: Gruppe ---------- */
+  async function fetchGroup(){
+    const [profiles, walkDocs, wonDoc] = await Promise.all([sListEntries('member:'), sListEntries('walks:'), sGet('wellness-won')]);
+    const walksBySlug = {};
+    walkDocs.forEach(w => {
+      walksBySlug[w.key.slice(6)] = (w.value || []).map(x => ({date:x.date, durationSec:x.durationSec, distanceKm:x.distanceKm}));
+    });
+    const members = profiles.filter(p => p.value).map(p => {
+      const slug = p.key.slice(7);
+      return {slug, name: p.value.displayName, photo: p.value.photo || null, walks: walksBySlug[slug] || []};
+    });
+    return {members, won: !!wonDoc};
+  }
+
+  function computeGroup(data){
+    const members = data.members || [];
+    const sets = members.map(m => qualSet(m.walks));
+    const withStreak = members.map((m,i)=>{
+      const trail = buildTrail(k => sets[i].has(k) ? 'done' : false);
+      const streak = streakFromTrail(trail);
+      const qCount = m.walks.filter(w=>w.durationSec>=MIN_SEC).length;
+      const pts = qCount*10 + MILESTONES.filter(x=>streak>=x.n).length*25;
+      return {...m, streak, pts};
+    }).sort((a,b)=>b.streak-a.streak || b.pts-a.pts);
+
+    const teamTrail = buildTrail(k => {
+      let c = 0; sets.forEach(s => { if(s.has(k)) c++; });
+      if(c === 0) return false;
+      return c === members.length ? 'done' : 'partial';
+    });
+    const teamStreak = streakFromTrail(teamTrail);
+    const curKey = teamTrail[teamTrail.length-1].key;
+    const doneThisWeek = sets.filter(s => s.has(curKey)).length;
+    const totalKm = members.reduce((a,m)=> a + m.walks.reduce((s,w)=>s+w.distanceKm,0), 0);
+    return {members, withStreak, teamTrail, teamStreak, doneThisWeek, totalKm,
+            won: !!data.won || (members.length > 0 && teamStreak >= GOAL_WEEKS)};
+  }
+
+  function paintGroup(g){
+    if(g.members.length === 0){
+      $('#main').innerHTML = `<div class="empty-note">Noch ist niemand aus der Gruppe dabei. Sobald deine Freundinnen sich einen Namen geben, taucht ihr hier gemeinsam auf.</div>`;
+      return;
+    }
+    $('#main').innerHTML = `
+      ${g.won ? `<div class="win-banner"><div class="display">🎁 Wellness-Tag gewonnen!</div><p>Ihr wart 40 Wochen in Folge gemeinsam unterwegs.<br><strong>Meldet euch bei Clemens, um euren Wellness-Gutschein einzulösen.</strong></p></div>` : ''}
+      <div class="hero">
+        <div class="ring-wrap">
+          ${ringSVG(Math.min(g.teamStreak, GOAL_WEEKS)/GOAL_WEEKS, g.won)}
+          <div class="ring-center">
+            <div class="ring-num display">${g.won ? GOAL_WEEKS : g.teamStreak}</div>
+            <div class="ring-sub">von ${GOAL_WEEKS}</div>
+          </div>
+        </div>
+        <div class="hero-goal">${g.won ? '🎁 Ziel erreicht!' : `Wochen in Folge, in denen ALLE (${g.members.length}) mind. 60 Min. unterwegs waren`}</div>
+        <div class="hero-note">Diese Woche schon ${g.doneThisWeek} von ${g.members.length} dabei · gemeinsam ${fmtKm(g.totalKm)} km</div>
+      </div>
+
+      <div class="grid-wrap">
+        <div class="grid-title"><span>Gemeinsamer Weg zum Wellness-Tag</span><span>${Math.min(g.teamStreak, GOAL_WEEKS)}/${GOAL_WEEKS}</span></div>
+        <div class="grid">
+          ${g.teamTrail.map(w=>`<div class="grid-cell ${w.status} ${g.won && w.status==='done' ? 'won':''}" title="Woche ${w.num}"></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="section-title">Rangliste</div>
+      ${g.withStreak.map((m,i)=>`
+        <div class="lb-item">
+          <div class="lb-rank">${i+1}</div>
+          <div class="lb-avatar">${avatarHTML(m.name, m.photo, 36)}</div>
+          <div class="lb-name">${esc(m.name)}${m.slug===mySlug ? ' (du)' : ''}</div>
+          <div>
+            <div class="lb-streak">🔥 ${m.streak}</div>
+            <div class="lb-pts">${m.pts} Punkte</div>
+          </div>
+        </div>`).join('')}
+      <p class="empty-note">Ein Spaziergang zählt ab 60 Minuten, an jedem beliebigen Tag der Woche.</p>
+    `;
+    animateMain();
+  }
+
+  async function renderGroup(){
+    const cached = localGet('cache:group');
+    if(cached) paintGroup(computeGroup(cached));
+    else $('#main').innerHTML = `<div class="empty-note">Lade Gruppendaten …</div>`;
+    await refreshGroup(true, !!cached);
+  }
+
+  async function refreshGroup(showErrors, hadCache){
+    try{
+      const data = await fetchGroup();
+      const g = computeGroup(data);
+      if(g.won && !data.won){
+        data.won = true;
+        sSet('wellness-won', {date: localISO(new Date())});   // Gewinn dauerhaft merken
+      }
+      localSet('cache:group', data);
+      if(activeTab === 'group') paintGroup(g);
+      checkCelebrate(g);
+    }catch(e){
+      console.error(e);
+      if(showErrors){
+        if(hadCache) showBanner('Keine Verbindung – zeige gespeicherte Daten.');
+        else if(activeTab === 'group') $('#main').innerHTML = `<div class="empty-note">Gruppendaten konnten nicht geladen werden. Bitte Internetverbindung prüfen und den Tab nochmal öffnen.</div>`;
+      }
+    }
+  }
+
+  /* ---------- Feier bei 40 Wochen ---------- */
+  function launchConfetti(){
+    const cv = $('#confetti'), ctx = cv.getContext('2d');
+    cv.width = window.innerWidth; cv.height = window.innerHeight; cv.style.display = 'block';
+    const colors = ['#FF7A59','#4F9D8C','#FFD166','#E7DCEE','#FBE0E4','#FF9269'];
+    const parts = Array.from({length:150}, ()=>({
+      x: Math.random()*cv.width, y: -Math.random()*cv.height*0.6, r: 4+Math.random()*6,
+      c: colors[Math.floor(Math.random()*colors.length)],
+      vx: -1.5+Math.random()*3, vy: 2+Math.random()*3.5, rot: Math.random()*6, vr: -0.15+Math.random()*0.3
+    }));
+    let frames = 0;
+    (function tick(){
+      ctx.clearRect(0,0,cv.width,cv.height);
+      parts.forEach(p=>{
+        p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.c; ctx.fillRect(-p.r, -p.r/2, p.r*2, p.r); ctx.restore();
+      });
+      frames++;
+      if(frames < 420) requestAnimationFrame(tick);
+      else { ctx.clearRect(0,0,cv.width,cv.height); cv.style.display = 'none'; }
+    })();
+  }
+  function showCelebration(){
+    $('#celebrate').classList.add('active');
+    launchConfetti();
+  }
+  function checkCelebrate(g){
+    if(g && g.won && !localGet('celebrated')) showCelebration();
+  }
+  $('#celebrate-close').addEventListener('click', ()=>{
+    $('#celebrate').classList.remove('active');
+    localSet('celebrated', true);
+  });
+
+  /* ---------- Stimmung ---------- */
+  function renderMoodOptions(){
+    $('#mood-options').innerHTML = MOODS.map(m=>
+      `<button type="button" class="mood-btn" data-v="${m.v}"><span class="emoji">${m.emoji}</span><span class="label">${m.label}</span></button>`
+    ).join('');
+    $('#mood-options').querySelectorAll('.mood-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> selectMood(parseInt(btn.dataset.v,10)));
+    });
+  }
+  function openMoodCheck(stage){
+    currentMoodStage = stage;
+    $('#mood-title').textContent = stage==='before' ? 'Wie fühlst du dich gerade?' : 'Und jetzt, nach dem Spaziergang?';
+    renderMoodOptions();
+    $('#mood-check').classList.add('active');
+  }
+  function selectMood(v){
+    $('#mood-check').classList.remove('active');
+    if(currentMoodStage === 'before'){ moodBefore = v; startTrackingActual(); }
+    else{ moodAfter = v; finalizeAndShowSummary(); }
+  }
+
+  /* ---------- Tracking ---------- */
+  $('#start-btn').addEventListener('click', ()=> openMoodCheck('before'));
+  $('#stop-btn').addEventListener('click', stopTracking);
+
+  async function acquireWakeLock(){
+    try{ if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }catch(e){}
+  }
+  function releaseWakeLock(){
+    try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } }catch(e){}
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && $('#tracking').classList.contains('active')) acquireWakeLock();
+  });
+
+  function startTrackingActual(){
+    trackPoints = [];
+    trackStart = Date.now();
+    $('#tracking').classList.add('active');
+    $('#track-timer').textContent = '00:00';
+    $('#track-dist').textContent = '0,00 km';
+    $('#track-status').textContent = 'GPS wird gesucht … (Bildschirm bitte anlassen)';
+    acquireWakeLock();
+
+    try{
+      if(typeof L !== 'undefined'){
+        if(!map){
+          map = L.map('track-map', {zoomControl:false, attributionControl:true}).setView([51.16,10.45], 13);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap-Mitwirkende'}).addTo(map);
+          polyline = L.polyline([], {color:'#FF7A59', weight:4}).addTo(map);
+        } else { polyline.setLatLngs([]); }
+        if(marker){ map.removeLayer(marker); marker = null; }
+        setTimeout(()=> map.invalidateSize(), 150);
+      }
+    }catch(e){ console.error('Karte', e); }
+
+    timerInt = setInterval(()=>{
+      const sec = Math.floor((Date.now()-trackStart)/1000);
+      $('#track-timer').textContent = fmtClock(sec);
+    }, 1000);
+
+    if(!navigator.geolocation){
+      $('#track-status').textContent = 'Dieses Gerät unterstützt kein GPS. Zeit wird trotzdem gemessen.';
+      return;
+    }
+    watchId = navigator.geolocation.watchPosition(onPosition, onGeoError, {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
+  }
+
+  function onPosition(pos){
+    const {latitude:lat, longitude:lng, accuracy} = pos.coords;
+    $('#track-status').textContent = accuracy < 30 ? '' : 'GPS-Signal wird genauer …';
+    const last = trackPoints[trackPoints.length-1];
+    const point = {lat, lng, t:Date.now()};
+    if(last){ const d = haversine(last, point); if(d < 5) return; }
+    trackPoints.push(point);
+    if(map && polyline){
+      polyline.addLatLng([lat,lng]);
+      if(!marker){ marker = L.circleMarker([lat,lng], {radius:6, color:'#FF7A59', fillColor:'#FF7A59', fillOpacity:1}).addTo(map); }
+      else marker.setLatLng([lat,lng]);
+      map.panTo([lat,lng]);
+    }
+    let distM = 0;
+    for(let i=1;i<trackPoints.length;i++) distM += haversine(trackPoints[i-1], trackPoints[i]);
+    $('#track-dist').textContent = (distM/1000).toFixed(2).replace('.',',') + ' km';
+  }
+
+  function onGeoError(err){
+    if(err.code === err.PERMISSION_DENIED){
+      $('#track-status').textContent = 'Standortzugriff wurde nicht erlaubt. Bitte in den Handy-Einstellungen erlauben, dann neu starten.';
+    } else {
+      $('#track-status').textContent = 'GPS-Signal gerade schwach — bleib in Bewegung.';
+    }
+  }
+
+  function stopTracking(){
+    if(watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+    if(timerInt) clearInterval(timerInt);
+    watchId = null; timerInt = null;
+    releaseWakeLock();
+    $('#tracking').classList.remove('active');
+
+    const durationSec = Math.max(1, Math.floor((Date.now()-trackStart)/1000));
+    let distM = 0;
+    for(let i=1;i<trackPoints.length;i++) distM += haversine(trackPoints[i-1], trackPoints[i]);
+    const startDate = new Date(trackStart);
+
+    pendingWalk = {
+      date: localISO(startDate),            // Datum kommt vom Handy
+      weekday: startDate.getDay(),
+      durationSec,
+      distanceKm: Math.round((distM/1000)*100)/100,
+      route: downsample(trackPoints, 60)
+    };
+    openMoodCheck('after');
+  }
+
+  function finalizeAndShowSummary(){
+    if(!pendingWalk) return;
+    pendingWalk.moodBefore = moodBefore;
+    pendingWalk.moodAfter = moodAfter;
+    const qualifies = pendingWalk.durationSec >= MIN_SEC;
+    const cumulativeKm = myWalks.reduce((a,w)=>a+w.distanceKm,0) + pendingWalk.distanceKm;
+
+    $('#summary-title').textContent = qualifies ? 'Zählt für euren Weg! 🎉' : 'Spaziergang gespeichert';
+    $('#summary-sub').textContent = qualifies ? 'Diese Woche ist erledigt.' : 'Zählt noch nicht fürs Wochenziel (dafür braucht es mindestens 60 Minuten), wird aber trotzdem gespeichert.';
+    $('#s-dur').textContent = fmtClock(pendingWalk.durationSec);
+    $('#s-dist').textContent = pendingWalk.distanceKm.toFixed(2).replace('.',',') + ' km';
+    $('#s-pts').textContent = '+' + (qualifies ? 10 : 2);
+
+    const mb = MOODS.find(m=>m.v===moodBefore), ma = MOODS.find(m=>m.v===moodAfter);
+    $('#mood-compare-box').innerHTML = `
+      <div><div class="mood-emoji">${mb?mb.emoji:'❔'}</div><div class="mood-label">Vorher</div></div>
+      <div class="arrow">→</div>
+      <div><div class="mood-emoji">${ma?ma.emoji:'❔'}</div><div class="mood-label">Nachher</div></div>
+    `;
+    let note = 'Nicht jeder Tag ist top &mdash; auch okay.';
+    if(moodAfter > moodBefore) note = 'Deine Stimmung hat sich verbessert 🎉';
+    else if(moodAfter === moodBefore) note = 'Stimmung gleich gut geblieben.';
+    $('#mood-note').innerHTML = note;
+
+    $('#cumulative-km').textContent = `Insgesamt schon ${fmtKm(cumulativeKm)} km gelaufen`;
+    $('#new-badge-note').style.display = 'none';
+    $('#summary').classList.add('active');
+  }
+
+  function streakOf(walks){
+    const qs = qualSet(walks);
+    return streakFromTrail(buildTrail(k => qs.has(k) ? 'done' : false));
+  }
+
+  $('#save-walk-btn').addEventListener('click', async ()=>{
+    if(!pendingWalk) return;
+    const btn = $('#save-walk-btn'); btn.disabled = true; btn.textContent = 'Speichere …';
+    let fresh;
+    try{ fresh = (await sGet('walks:' + mySlug)) || []; }
+    catch(e){
+      showBanner('Keine Verbindung – Spaziergang noch nicht gespeichert. Bitte nochmal tippen.');
+      btn.disabled = false; btn.textContent = 'Spaziergang speichern'; return;
+    }
+    const beforeStreak = streakOf(fresh);
+    fresh.push(pendingWalk);
+    const ok = await sSet('walks:' + mySlug, fresh);
+    btn.disabled = false; btn.textContent = 'Spaziergang speichern';
+    if(!ok) return;
+    myWalks = fresh; localSet('cache:walks', myWalks);
+
+    const afterStreak = streakOf(myWalks);
+    const justEarned = afterStreak > beforeStreak ? MILESTONES.find(m=>m.n===afterStreak) : null;
+    if(justEarned){
+      $('#new-badge-note').style.display = 'block';
+      $('#new-badge-note').textContent = `Neues Abzeichen freigeschaltet: ${justEarned.emoji} ${justEarned.label}`;
+      setTimeout(closeSummary, 1800);
+    } else { closeSummary(); }
+  });
+  $('#discard-walk-btn').addEventListener('click', closeSummary);
+
+  function closeSummary(){
+    $('#summary').classList.remove('active');
+    pendingWalk = null; moodBefore = null; moodAfter = null;
+    render();
+    refreshGroup(false);    // prüft auch, ob die Gruppe jetzt die 40 Wochen geschafft hat
+  }
+
+  /* ---------- Offline-Fähigkeit & Start ---------- */
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  }
+  if(location.hash === '#feiern'){ setTimeout(showCelebration, 900); }   // Vorschau der Feier
+
+  const __splashStart = Date.now();
+  Promise.resolve().then(init).catch(function(e){ console.error(e); }).then(function(){
+    const wait = Math.max(0, 600 - (Date.now() - __splashStart));
+    setTimeout(function(){
+      const sp = $('#splash');
+      if(sp) sp.classList.add('hide');
+    }, wait);
+  });
+})();
+</script>
+</body>
+</html>
